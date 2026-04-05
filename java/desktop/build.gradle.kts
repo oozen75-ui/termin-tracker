@@ -42,8 +42,6 @@ compose.desktop {
             windows {
                 menuGroup = "Termin Tracker"
                 upgradeUuid = "a0b1c2d3-e4f5-6789-0123-456789abcdef"
-                msiPackage = true
-                shortcut = true
             }
             
             macOS {
