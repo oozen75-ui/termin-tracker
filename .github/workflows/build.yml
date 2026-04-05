@@ -1,0 +1,98 @@
+name: Build Termin Tracker v1.0.1
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '24.x'
+  GRADLE_VERSION: '8.7'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Gradle ${{ env.GRADLE_VERSION }}
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          cache-disabled: true
+      
+      - name: Build Linux Package
+        working-directory: ./java
+        run: |
+          chmod +x gradlew
+          ./gradlew :desktop:packageDeb --no-daemon
+      
+      - name: Prepare Uninstaller
+        run: |
+          mkdir -p dist/linux
+          cp uninstaller/uninstall.sh dist/linux/
+          chmod +x dist/linux/uninstall.sh
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: termin-tracker-linux
+          path: |
+            java/desktop/build/compose/binaries/main/deb/*.deb
+            dist/linux/uninstall.sh
+          if-no-files-found: warn
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      
+      - name: Setup Gradle ${{ env.GRADLE_VERSION }}
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          cache-disabled: true
+      
+      - name: Build Windows Package
+        working-directory: .\java
+        run: .\gradlew.bat :desktop:packageExe --no-daemon
+        shell: cmd
+      
+      - name: Prepare Uninstaller
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\windows
+          Copy-Item uninstaller\uninstall.bat dist\windows\
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: termin-tracker-windows
+          path: |
+            java/desktop/build/compose/binaries/main/exe/*.exe
+            dist/windows/uninstall.bat
+          if-no-files-found: warn
