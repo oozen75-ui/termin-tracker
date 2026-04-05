@@ -3,6 +3,8 @@ name: Build Termin Tracker v1.0.1
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 env:
@@ -17,18 +19,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Node.js ${{ env.NODE_VERSION }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup JDK ${{ env.JAVA_VERSION }}
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
       
-      - name: Setup Gradle ${{ env.GRADLE_VERSION }}
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
@@ -38,7 +40,7 @@ jobs:
         working-directory: ./java
         run: |
           chmod +x gradlew
-          ./gradlew :desktop:packageDeb --no-daemon
+          ./gradlew :desktop:packageDeb --no-daemon --stacktrace
       
       - name: Prepare Uninstaller
         run: |
@@ -61,18 +63,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Node.js ${{ env.NODE_VERSION }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       
-      - name: Setup JDK ${{ env.JAVA_VERSION }}
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
       
-      - name: Setup Gradle ${{ env.GRADLE_VERSION }}
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
@@ -80,7 +82,7 @@ jobs:
       
       - name: Build Windows Package
         working-directory: .\java
-        run: .\gradlew.bat :desktop:packageExe --no-daemon
+        run: .\gradlew.bat :desktop:packageExe --no-daemon --stacktrace
         shell: cmd
       
       - name: Prepare Uninstaller
