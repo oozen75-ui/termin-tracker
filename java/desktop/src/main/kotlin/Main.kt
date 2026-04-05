@@ -40,6 +40,10 @@ fun TerminTrackerApp() {
     var postalCode by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     
+    // Dropdown durumları
+    var cityExpanded by remember { mutableStateOf(false) }
+    var districtExpanded by remember { mutableStateOf(false) }
+    
     // Şehir listesi (offline)
     val cities = listOf(
         "Berlin", "Hamburg", "München", "Köln", "Frankfurt",
@@ -142,8 +146,8 @@ fun TerminTrackerApp() {
                     
                     // Şehir Dropdown
                     ExposedDropdownMenuBox(
-                        expanded = false,
-                        onExpandedChange = {},
+                        expanded = cityExpanded,
+                        onExpandedChange = { cityExpanded = !cityExpanded },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
@@ -152,15 +156,30 @@ fun TerminTrackerApp() {
                             readOnly = true,
                             label = { Text("Şehir *") },
                             leadingIcon = { Icon(Icons.Default.LocationCity, null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = cityExpanded) },
                             modifier = Modifier.fillMaxWidth().menuAnchor()
                         )
+                        ExposedDropdownMenu(
+                            expanded = cityExpanded,
+                            onDismissRequest = { cityExpanded = false }
+                        ) {
+                            cities.forEach { city ->
+                                DropdownMenuItem(
+                                    text = { Text(city) },
+                                    onClick = {
+                                        selectedCity = city
+                                        selectedDistrict = ""
+                                        cityExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                     
                     // İlçe Dropdown
                     ExposedDropdownMenuBox(
-                        expanded = false,
-                        onExpandedChange = {},
+                        expanded = districtExpanded,
+                        onExpandedChange = { if (selectedCity.isNotEmpty()) districtExpanded = !districtExpanded },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
@@ -170,9 +189,23 @@ fun TerminTrackerApp() {
                             enabled = selectedCity.isNotEmpty(),
                             label = { Text("İlçe / Bezirk") },
                             leadingIcon = { Icon(Icons.Default.Map, null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                             modifier = Modifier.fillMaxWidth().menuAnchor()
                         )
+                        ExposedDropdownMenu(
+                            expanded = districtExpanded,
+                            onDismissRequest = { districtExpanded = false }
+                        ) {
+                            districts.forEach { district ->
+                                DropdownMenuItem(
+                                    text = { Text(district) },
+                                    onClick = {
+                                        selectedDistrict = district
+                                        districtExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                     
                     // Posta Kodu
