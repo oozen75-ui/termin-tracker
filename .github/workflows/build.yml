@@ -1,4 +1,4 @@
-name: Build Termin Tracker v1.0.1
+name: Build Termin Tracker
 
 on:
   push:
@@ -7,93 +7,107 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
-env:
-  JAVA_VERSION: '17'
-  GRADLE_VERSION: '8.7'
-
 jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js 24.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.x'
-      
-      - name: Setup JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-      
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: ${{ env.GRADLE_VERSION }}
-          cache-disabled: true
-      
-      - name: Build Linux Package
-        working-directory: ./java
-        run: |
-          chmod +x gradlew
-          ./gradlew :desktop:packageDeb --no-daemon --stacktrace
-      
-      - name: Prepare Uninstaller
-        run: |
-          mkdir -p dist/linux
-          cp uninstaller/uninstall.sh dist/linux/
-          chmod +x dist/linux/uninstall.sh
-      
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: termin-tracker-linux
-          path: |
-            java/desktop/build/compose/binaries/main/deb/*.deb
-            dist/linux/uninstall.sh
-          if-no-files-found: warn
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+    
+    - name: Build with Gradle
+      run: |
+        cd java
+        ./gradlew build --no-daemon
+    
+    - name: Upload Linux JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: termin-tracker-linux
+        path: |
+          java/desktop/build/libs/*.jar
+          java/common/build/libs/*.jar
 
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js 24.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.x'
-      
-      - name: Setup JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-      
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: ${{ env.GRADLE_VERSION }}
-          cache-disabled: true
-      
-      - name: Build Windows Package
-        working-directory: .\java
-        run: .\gradlew.bat :desktop:packageExe --no-daemon --stacktrace
-        shell: cmd
-      
-      - name: Prepare Uninstaller
-        run: |
-          New-Item -ItemType Directory -Force -Path dist\windows
-          Copy-Item uninstaller\uninstall.bat dist\windows\
-      
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: termin-tracker-windows
-          path: |
-            java/desktop/build/compose/binaries/main/exe/*.exe
-            dist/windows/uninstall.bat
-          if-no-files-found: warn
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+    
+    - name: Build with Gradle (Windows)
+      run: |
+        cd java
+        .\gradlew.bat build --no-daemon
+      shell: powershell
+    
+    - name: Upload Windows JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: termin-tracker-windows
+        path: |
+          java/desktop/build/libs/*.jar
+          java/common/build/libs/*.jar
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+    
+    - name: Build with Gradle
+      run: |
+        cd java
+        ./gradlew build --no-daemon
+    
+    - name: Upload macOS JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: termin-tracker-macos
+        path: |
+          java/desktop/build/libs/*.jar
+          java/common/build/libs/*.jar
+
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          termin-tracker-linux/**/*.jar
+          termin-tracker-windows/**/*.jar
+          termin-tracker-macos/**/*.jar
+        tag_name: v${{ github.run_number }}
+        name: Release ${{ github.run_number }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
