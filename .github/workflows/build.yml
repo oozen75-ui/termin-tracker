@@ -22,18 +22,16 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
     
-    - name: Build with Gradle
+    - name: Build Linux Distributable
       run: |
         cd java
-        ./gradlew build --no-daemon
+        ./gradlew createDistributable --no-daemon
     
-    - name: Upload Linux JAR
+    - name: Upload Linux App
       uses: actions/upload-artifact@v4
       with:
         name: termin-tracker-linux
-        path: |
-          java/desktop/build/libs/*.jar
-          java/common/build/libs/*.jar
+        path: java/desktop/build/compose/binaries/main/app/
 
   build-windows:
     runs-on: windows-latest
@@ -49,19 +47,17 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
     
-    - name: Build with Gradle (Windows)
+    - name: Build Windows Distributable
       run: |
         cd java
-        .\gradlew.bat build --no-daemon
+        .\gradlew.bat createDistributable --no-daemon
       shell: powershell
     
-    - name: Upload Windows JAR
+    - name: Upload Windows App
       uses: actions/upload-artifact@v4
       with:
         name: termin-tracker-windows
-        path: |
-          java/desktop/build/libs/*.jar
-          java/common/build/libs/*.jar
+        path: java/desktop/build/compose/binaries/main/app/
 
   build-macos:
     runs-on: macos-latest
@@ -77,18 +73,16 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
     
-    - name: Build with Gradle
+    - name: Build macOS Distributable
       run: |
         cd java
-        ./gradlew build --no-daemon
+        ./gradlew createDistributable --no-daemon
     
-    - name: Upload macOS JAR
+    - name: Upload macOS App
       uses: actions/upload-artifact@v4
       with:
         name: termin-tracker-macos
-        path: |
-          java/desktop/build/libs/*.jar
-          java/common/build/libs/*.jar
+        path: java/desktop/build/compose/binaries/main/app/
 
   release:
     needs: [build-linux, build-windows, build-macos]
@@ -98,13 +92,19 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
     
+    - name: Create ZIP files
+      run: |
+        cd termin-tracker-linux && zip -r ../termin-tracker-linux.zip TerminTracker/ && cd ..
+        cd termin-tracker-windows && zip -r ../termin-tracker-windows.zip TerminTracker/ && cd ..
+        cd termin-tracker-macos && zip -r ../termin-tracker-macos.zip TerminTracker/ && cd ..
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          termin-tracker-linux/**/*.jar
-          termin-tracker-windows/**/*.jar
-          termin-tracker-macos/**/*.jar
+          termin-tracker-linux.zip
+          termin-tracker-windows.zip
+          termin-tracker-macos.zip
         tag_name: v${{ github.run_number }}
         name: Release ${{ github.run_number }}
         draft: false

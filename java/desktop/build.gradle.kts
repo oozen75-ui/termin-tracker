@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     id("org.jetbrains.compose")
+    kotlin("plugin.serialization")
 }
 
 kotlin {
@@ -14,6 +15,18 @@ dependencies {
     implementation(compose.materialIconsExtended)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.8.0")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // SQLite
+    implementation("org.xerial:sqlite-jdbc:3.45.1.0")
+
+    // OkHttp for API calls
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // DateTime
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
 }
 
 compose.desktop {
@@ -32,23 +45,26 @@ compose.desktop {
             vendor = "Technic Genius GmbH"
             copyright = "© 2026 Technic Genius GmbH"
             licenseFile.set(project.file("../../LICENSE.txt"))
-            
+
             linux {
                 debMaintainer = "technic-gnius@example.com"
                 menuGroup = "Office"
                 appRelease = "1"
                 appCategory = "Office"
             }
-            
+
             windows {
                 menuGroup = "Termin Tracker"
                 upgradeUuid = "a0b1c2d3-e4f5-6789-0123-456789abcdef"
             }
-            
+
             macOS {
                 bundleID = "com.termintracker.desktop"
                 appStore = false
             }
+
+            // Add modules for SQLite
+            modules("java.sql")
         }
     }
 }
