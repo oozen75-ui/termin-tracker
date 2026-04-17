@@ -18,6 +18,10 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.9")
     
     // Jsoup for web scraping
+
+    // Selenium for real browser automation
+    implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
+    implementation("io.github.bonigarcia:webdrivermanager:5.8.0")
     implementation("org.jsoup:jsoup:1.17.2")
     
     // JavaMail for email notifications
