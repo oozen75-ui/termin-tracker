@@ -1,0 +1,5 @@
+
+# Build folders
+java/.gradle/
+java/**/build/
+!java/**/build/.gitkeep
