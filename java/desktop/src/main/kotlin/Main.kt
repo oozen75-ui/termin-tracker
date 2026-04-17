@@ -18,6 +18,9 @@ import com.termintracker.localization.Translations
 import com.termintracker.model.*
 import com.termintracker.viewmodel.AppointmentViewModel
 import com.termintracker.viewmodel.OnlineSearchViewModel
+import com.termintracker.utils.Logger
+import com.termintracker.utils.AppInfo
+import com.termintracker.desktop.utils.GlobalExceptionHandler
 import kotlinx.coroutines.*
 import kotlinx.datetime.*
 import java.io.File
@@ -34,18 +37,29 @@ sealed class Screen {
 }
 
 fun main() = application {
+    // Initialize global exception handler
+    GlobalExceptionHandler.initialize()
+    
+    // Initialize logger
+    Logger.info("${AppInfo.FULL_NAME} starting...")
+    Logger.info(AppInfo.getBuildInfo())
+    
     DatabaseManager.initialize()
+    Logger.info("Database initialized")
+    
     val viewModel = remember { AppointmentViewModel() }
     
     LaunchedEffect(Unit) {
         val lang = viewModel.personalInfo.value.preferredLanguage
         Translations.setLanguage(lang)
+        Logger.info("Language set to: $lang")
     }
     
     Window(
         onCloseRequest = {
             viewModel.dispose()
             DatabaseManager.close()
+            Logger.info("Application closing...")
             exitApplication()
         },
         title = "Termin Tracker v1.0.2",
@@ -54,6 +68,9 @@ fun main() = application {
     ) {
         MaterialTheme {
             Surface {
+                // Global exception dialog
+                GlobalExceptionHandler.ExceptionDialog()
+                
                 TerminTrackerApp(viewModel)
             }
         }
