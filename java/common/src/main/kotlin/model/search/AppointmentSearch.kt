@@ -44,6 +44,7 @@ enum class AppointmentCategory {
     HAUSARZT,               // General Practitioner
     FACHARZT,               // Specialist
     ZAHNARZT,               // Dentist
+    HNO,                    // Hals-Nasen-Ohren (Kulak Burun Boğaz)
     THERAPIE,               // Therapy
     IMPFUNG,                // Vaccination
     

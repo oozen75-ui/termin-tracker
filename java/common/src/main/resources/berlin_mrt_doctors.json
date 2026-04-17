@@ -1,0 +1,43 @@
+{
+  "lastUpdated": "2026-04-18",
+  "category": "MRT",
+  "location": "Berlin",
+  "doctors": [
+    {
+      "id": "mrt-001",
+      "name": "Radiologische Praxis Berlin Mitte",
+      "address": "Friedrichstraße 123, 10117 Berlin",
+      "phone": "030 12345678",
+      "specialty": "MRT - Hals-Weichteile",
+      "insurance": ["GKV", "PKV"],
+      "bookingUrl": "https://www.doctolib.de/radiologie/mrt/berlin",
+      "nextAvailable": "2026-04-22T09:00:00",
+      "rating": 4.8,
+      "reviewCount": 127
+    },
+    {
+      "id": "mrt-002", 
+      "name": "MRT-Zentrum Berlin Charlottenburg",
+      "address": "Kurfürstendamm 456, 10719 Berlin",
+      "phone": "030 87654321",
+      "specialty": "MRT - Hals-Weichteile",
+      "insurance": ["PKV", "GKV"],
+      "bookingUrl": "https://www.doctolib.de/radiologie/mrt/berlin",
+      "nextAvailable": "2026-04-25T14:30:00",
+      "rating": 4.6,
+      "reviewCount": 89
+    },
+    {
+      "id": "mrt-003",
+      "name": "Praxis für Radiologie und MRT",
+      "address": "Unter den Linden 789, 10117 Berlin",
+      "phone": "030 11223344",
+      "specialty": "MRT - Hals-Weichteile",
+      "insurance": ["GKV"],
+      "bookingUrl": "https://www.doctolib.de/radiologie/mrt/berlin",
+      "nextAvailable": "2026-04-20T11:15:00",
+      "rating": 4.9,
+      "reviewCount": 203
+    }
+  ]
+}
