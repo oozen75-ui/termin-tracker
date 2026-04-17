@@ -63,6 +63,15 @@ object RequiredDocumentsList {
                 RequiredDocument(name = "Röntgenbilder (falls vorhanden)", isRequired = false)
             )
             
+            AppointmentType.HNO -> listOf(
+                RequiredDocument(name = "Versicherungskarte", isRequired = true),
+                RequiredDocument(name = "Personalausweis", isRequired = true),
+                RequiredDocument(name = "Überweisung vom Hausarzt", isRequired = true),
+                RequiredDocument(name = "Vorbefunde/Untersuchungsergebnisse", isRequired = false),
+                RequiredDocument(name = "Aktuelle Medikamentenliste", isRequired = false),
+                RequiredDocument(name = "Allergiepass (falls vorhanden)", isRequired = false)
+            )
+            
             // Finans
             AppointmentType.BANK -> listOf(
                 RequiredDocument(name = "Personalausweis/Reisepass", isRequired = true),
