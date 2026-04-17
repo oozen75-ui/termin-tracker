@@ -40,7 +40,7 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "TerminTracker"
-            packageVersion = "1.0.2"
+            packageVersion = "2.0.0"
             description = "Almanya Randevu Takip Sistemi"
             vendor = "Technic Genius GmbH"
             copyright = "© 2026 Technic Genius GmbH"
