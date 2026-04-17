@@ -26,14 +26,18 @@ data class AppointmentSearch(
 
 @Serializable
 enum class SearchType {
-    DOCTOLIB,
-    CLINIC_WEBSITE,
-    PRIVATE_DOCTOR,
-    GENERIC
+    DOCTOLIB,               // Sağlık - Doctolib
+    CLINIC_WEBSITE,         // Sağlık - Klinik web sitesi
+    PRIVATE_DOCTOR,         // Sağlık - Özel doktor
+    BERLIN_SERVICE_PORTAL,  // Resmi - Berlin Service Portal (KVR, Bürgeramt)
+    BMV,                    // Resmi - BMV Kfz-Zulassung
+    PASSPORT_VISA,          // Resmi - Pasaport/Vize
+    GENERIC                 // Diğer
 }
 
 @Serializable
 enum class AppointmentCategory {
+    // Sağlık
     MRT,                    // MRI
     NUKLEARMEDIZIN,         // Nuclear Medicine
     MAMMOGRAFIE,            // Mammography
@@ -42,6 +46,21 @@ enum class AppointmentCategory {
     ZAHNARZT,               // Dentist
     THERAPIE,               // Therapy
     IMPFUNG,                // Vaccination
+    
+    // Resmi Kurumlar
+    KVR,                    // KVR - Bürgeramt
+    BUERGERAMT,             // Bürgeramt
+    AUSLAENDERBEHOERDE,     // Ausländerbehörde
+    BMV_KFZ_ZULASSUNG,      // Kfz-Zulassung
+    BMV_KFZ_ABMELDUNG,      // Kfz-Abmeldung
+    BMV_KFZ_UMMELDUNG,      // Kfz-Ummeldung
+    BMV_WUNSCHKENNZEICHEN,  // Wunschkennzeichen
+    PASSPORT_TURKISH,       // Türk pasaportu
+    PASSPORT_GERMAN,        // Alman pasaportu
+    VISA_TURKISH,           // Türk vizesi
+    VISA_SCHENGEN,          // Schengen vizesi
+    
+    // Diğer
     SONSTIGES               // Other
 }
 
@@ -147,6 +166,8 @@ fun AppointmentCategory.getDisplayName(): String = when (this) {
     AppointmentCategory.THERAPIE -> "Therapie"
     AppointmentCategory.IMPFUNG -> "Impfung"
     AppointmentCategory.SONSTIGES -> "Sonstiges"
+    // Resmi kurumlar (yapım aşamasında)
+    else -> "Sonstiges"
 }
 
 fun SearchType.getDisplayName(): String = when (this) {
@@ -154,6 +175,8 @@ fun SearchType.getDisplayName(): String = when (this) {
     SearchType.CLINIC_WEBSITE -> "Klinik Website"
     SearchType.PRIVATE_DOCTOR -> "Privat Arzt"
     SearchType.GENERIC -> "Generisch"
+    // Resmi kurumlar (yapım aşamasında)
+    else -> "Generisch"
 }
 
 fun MatchCriteria.getDisplayName(): String = when (this) {

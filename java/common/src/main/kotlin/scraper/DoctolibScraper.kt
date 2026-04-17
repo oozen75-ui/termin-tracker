@@ -124,6 +124,8 @@ class DoctolibScraper : BaseScraper() {
             AppointmentCategory.THERAPIE -> "Therapie"
             AppointmentCategory.IMPFUNG -> "Impfung"
             AppointmentCategory.SONSTIGES -> "Arzt"
+            // Resmi kurumlar Doctolib'de yok
+            else -> "Arzt"
         }
         
         return "$categoryTerm ${location.city}".trim()

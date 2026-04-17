@@ -74,6 +74,8 @@ abstract class BaseScraper : AppointmentScraper {
             AppointmentCategory.THERAPIE -> "therapie"
             AppointmentCategory.IMPFUNG -> "impfung"
             AppointmentCategory.SONSTIGES -> ""
+            // Resmi kurumlar için search term'ler (yapım aşamasında)
+            else -> ""
         }
     }
     
@@ -125,6 +127,8 @@ object ScraperFactory {
             SearchType.CLINIC_WEBSITE -> ClinicWebsiteScraper()
             SearchType.PRIVATE_DOCTOR -> PrivateDoctorScraper()
             SearchType.GENERIC -> GenericScraper()
+            // Resmi kurum scraper'ları yapım aşamasında
+            else -> GenericScraper()
         }
     }
     
