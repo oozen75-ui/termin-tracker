@@ -12,6 +12,7 @@ enum class AppointmentType(val displayName: String, val category: String) {
     HAUSARZT("Hausarzt", "Sağlık"),
     FACHARZT("Facharzt", "Sağlık"),
     ZAHNARZT("Zahnarzt", "Sağlık"),
+    HNO("HNO-Arzt (Kulak Burun Boğaz)", "Sağlık"),
     
     // Finans
     BANK("Bank", "Finans"),
