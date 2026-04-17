@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.termintracker.common.AppointmentTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-17T21:36:31" hostname="ozzy-HP-Z2-Mini-G4-Workstation" time="0.028">
+  <properties/>
+  <testcase name="testAppointmentEquality" classname="com.termintracker.common.AppointmentTest" time="0.028"/>
+  <testcase name="testAppointmentCreation" classname="com.termintracker.common.AppointmentTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

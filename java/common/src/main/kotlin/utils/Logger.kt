@@ -5,13 +5,13 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 object Logger {
-    private val logFile: File by lazy {
+    private val logFilePath: String by lazy {
         val userHome = System.getProperty("user.home")
         val appDir = File(userHome, ".termin_tracker")
         appDir.mkdirs()
         File(appDir, "app.log").apply {
             if (!exists()) createNewFile()
-        }
+        }.absolutePath
     }
     
     private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -23,17 +23,15 @@ object Logger {
         val timestamp = LocalDateTime.now().format(formatter)
         val logMessage = "[$timestamp] [${level.name}] $message"
         
-        // Console output
         when (level) {
             Level.ERROR -> System.err.println(logMessage)
             else -> println(logMessage)
         }
         
-        // File output
-        logFile.appendText("$logMessage\n")
+        File(logFilePath).appendText("$logMessage\n")
         throwable?.let {
-            logFile.appendText("Exception: ${it.message}\n")
-            logFile.appendText(it.stackTraceToString() + "\n")
+            File(logFilePath).appendText("Exception: ${it.message}\n")
+            File(logFilePath).appendText(it.stackTraceToString() + "\n")
         }
     }
     
@@ -49,5 +47,5 @@ object Logger {
     @JvmStatic
     fun error(message: String, throwable: Throwable? = null) = log(Level.ERROR, message, throwable)
     
-    fun getLogFile(): File = logFile
+    fun getLogFile(): File = File(logFilePath)
 }

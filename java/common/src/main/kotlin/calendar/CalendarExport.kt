@@ -2,9 +2,7 @@ package com.termintracker.calendar
 
 import com.termintracker.model.Appointment
 import com.termintracker.utils.Logger
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.datetime.toJavaLocalDateTime
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -17,14 +15,13 @@ import java.time.format.DateTimeFormatter
 object CalendarExport {
     
     private val icalFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
-    private val json = Json { prettyPrint = true }
     
     /**
      * Randevuyu iCal (.ics) formatına dönüştür
      */
     fun exportToICal(appointment: Appointment): String {
-        val startTime = appointment.date.atTime(appointment.time)
-        val endTime = startTime.plusMinutes(appointment.durationMinutes.toLong())
+        val startTime = appointment.dateTime.toJavaLocalDateTime()
+        val endTime = startTime.plusMinutes(30) // Default 30 min duration
         
         val uid = "${appointment.id}@termin-tracker"
         val created = java.time.LocalDateTime.now().format(icalFormatter)
@@ -55,8 +52,8 @@ object CalendarExport {
      * Google Calendar'e direkt ekleme URL'i oluştur
      */
     fun createGoogleCalendarUrl(appointment: Appointment): String {
-        val startTime = appointment.date.atTime(appointment.time)
-        val endTime = startTime.plusMinutes(appointment.durationMinutes.toLong())
+        val startTime = appointment.dateTime.toJavaLocalDateTime()
+        val endTime = startTime.plusMinutes(30)
         
         val dateFormat = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
         val dates = "${startTime.format(dateFormat)}/${endTime.format(dateFormat)}"
@@ -82,8 +79,8 @@ object CalendarExport {
      * Outlook Calendar URL'i oluştur
      */
     fun createOutlookCalendarUrl(appointment: Appointment): String {
-        val startTime = appointment.date.atTime(appointment.time)
-        val endTime = startTime.plusMinutes(appointment.durationMinutes.toLong())
+        val startTime = appointment.dateTime.toJavaLocalDateTime()
+        val endTime = startTime.plusMinutes(30)
         
         val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
         
@@ -106,7 +103,7 @@ object CalendarExport {
      * iCal dosyasını kaydet
      */
     fun saveICalToFile(appointment: Appointment, directory: File): File {
-        val fileName = "termin-${appointment.id}-${appointment.date}.ics"
+        val fileName = "termin-${appointment.id}-${appointment.dateTime.date}.ics"
         val file = File(directory, fileName)
         file.writeText(exportToICal(appointment))
         Logger.info("iCal exported to: ${file.absolutePath}")
@@ -127,8 +124,8 @@ object CalendarExport {
             appendLine("METHOD:PUBLISH")
             
             appointments.forEach { appointment ->
-                val startTime = appointment.date.atTime(appointment.time)
-                val endTime = startTime.plusMinutes(appointment.durationMinutes.toLong())
+                val startTime = appointment.dateTime.toJavaLocalDateTime()
+                val endTime = startTime.plusMinutes(30)
                 val uid = "${appointment.id}@termin-tracker"
                 val dtStart = startTime.format(icalFormatter)
                 val dtEnd = endTime.format(icalFormatter)
@@ -152,11 +149,11 @@ object CalendarExport {
     private fun buildDescription(appointment: Appointment): String {
         return buildString {
             appendLine("Randevu Türü: ${appointment.type.displayName}")
-            appendLine("Tarih: ${appointment.date}")
-            appendLine("Saat: ${appointment.time}")
+            appendLine("Tarih: ${appointment.dateTime.date}")
+            appendLine("Saat: ${appointment.dateTime.time}")
             appendLine("Konum: ${appointment.location}")
-            appointment.notes?.let { appendLine("Notlar: $it") }
-            appendLine("Oluşturuldu: Termin Tracker v1.1.0")
+            if (appointment.notes.isNotBlank()) appendLine("Notlar: ${appointment.notes}")
+            appendLine("Oluşturuldu: Termin Tracker v2.0.0")
         }.trim()
     }
     
@@ -168,11 +165,4 @@ object CalendarExport {
             .replace("\n", "\\n")
             .replace("\r", "")
     }
-    
-    @Serializable
-    data class CalendarExportConfig(
-        val includeNotes: Boolean = true,
-        val includeLocation: Boolean = true,
-        val reminderMinutes: Int = 30
-    )
 }

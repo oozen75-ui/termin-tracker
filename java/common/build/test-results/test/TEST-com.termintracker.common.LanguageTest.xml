@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.termintracker.common.LanguageTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-04-17T21:36:31" hostname="ozzy-HP-Z2-Mini-G4-Workstation" time="0.017">
+  <properties/>
+  <testcase name="testLanguageEntries" classname="com.termintracker.common.LanguageTest" time="0.017"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

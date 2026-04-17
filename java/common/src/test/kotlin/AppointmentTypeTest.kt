@@ -3,8 +3,10 @@ package com.termintracker.common
 import com.termintracker.model.Appointment
 import com.termintracker.model.AppointmentType
 import com.termintracker.model.Language
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.test.*
 
 /**
@@ -47,20 +49,21 @@ class AppointmentTypeTest {
 }
 
 class AppointmentTest {
+    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     
     @Test
     fun testAppointmentCreation() {
         val appointment = Appointment(
             id = 1L,
+            title = "Test Appointment",
             type = AppointmentType.KVR,
-            date = LocalDate(2026, 4, 20),
-            time = LocalTime(10, 30),
-            durationMinutes = 30,
+            dateTime = now,
             location = "Berlin Rathaus",
             notes = "Anmeldung için"
         )
         
         assertEquals(1L, appointment.id)
+        assertEquals("Test Appointment", appointment.title)
         assertEquals(AppointmentType.KVR, appointment.type)
         assertEquals("Berlin Rathaus", appointment.location)
         assertFalse(appointment.isCompleted)
@@ -68,14 +71,21 @@ class AppointmentTest {
     
     @Test
     fun testAppointmentEquality() {
-        val date = LocalDate(2026, 4, 20)
-        val time = LocalTime(10, 0)
-        
-        val a1 = Appointment(1L, AppointmentType.BANK, date, time, 15, "Bank")
-        val a2 = Appointment(1L, AppointmentType.BANK, date, time, 15, "Bank")
+        val a1 = Appointment(
+            id = 1L,
+            title = "Test",
+            type = AppointmentType.BANK,
+            dateTime = now
+        )
+        val a2 = Appointment(
+            id = 1L,
+            title = "Test",
+            type = AppointmentType.BANK,
+            dateTime = now
+        )
         
         assertEquals(a1.id, a2.id)
-        assertEquals(a1.date, a2.date)
+        assertEquals(a1.title, a2.title)
     }
 }
 

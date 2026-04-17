@@ -5,214 +5,171 @@ import com.termintracker.model.Language
 
 object Translations {
     private var currentLanguage: Language = Language.GERMAN
-
+    
     fun setLanguage(language: Language) {
         currentLanguage = language
     }
-
-    fun getCurrentLanguage(): Language = currentLanguage
-
+    
+    fun getLanguage(): Language = currentLanguage
+    
     fun t(key: String): String {
         return translations[currentLanguage]?.get(key) ?: key
     }
-
-    // Convenience methods for common keys
-    fun appTitle(): String = t("app.title")
-    fun personalInfo(): String = t("personal.info")
-    fun firstName(): String = t("first.name")
-    fun lastName(): String = t("last.name")
-    fun birthDate(): String = t("birth.date")
-    fun address(): String = t("address")
-    fun city(): String = t("city")
-    fun district(): String = t("district")
-    fun postalCode(): String = t("postal.code")
-    fun street(): String = t("street")
-    fun houseNumber(): String = t("house.number")
-    fun save(): String = t("save")
-    fun cancel(): String = t("cancel")
-    fun edit(): String = t("edit")
-    fun delete(): String = t("delete")
-    fun add(): String = t("add")
-    fun search(): String = t("search")
-    fun settings(): String = t("settings")
-    fun language(): String = t("language")
-    fun appointment(): String = t("appointment")
-    fun appointments(): String = t("appointments")
-    fun newAppointment(): String = t("new.appointment")
-    fun appointmentType(): String = t("appointment.type")
-    fun appointmentDate(): String = t("appointment.date")
-    fun appointmentTime(): String = t("appointment.time")
-    fun reminder(): String = t("reminder")
-    fun reminderBefore(): String = t("reminder.before")
-    fun minutes(): String = t("minutes")
-    fun documents(): String = t("documents")
-    fun requiredDocuments(): String = t("required.documents")
-    fun uploadFile(): String = t("upload.file")
-    fun exportICS(): String = t("export.ics")
-    fun exportJSON(): String = t("export.json")
-    fun importJSON(): String = t("import.json")
-    fun autoFill(): String = t("auto.fill")
-    fun notes(): String = t("notes")
-    fun completed(): String = t("completed")
-    fun pending(): String = t("pending")
-    fun today(): String = t("today")
-    fun upcoming(): String = t("upcoming")
-    fun past(): String = t("past")
-
+    
+    // Appointment Type Names
     fun getAppointmentTypeName(type: AppointmentType): String {
         return when (currentLanguage) {
             Language.GERMAN -> when (type) {
                 AppointmentType.KVR -> "KVR - Bürgeramt"
                 AppointmentType.AMT -> "Amt - Behörde"
+                AppointmentType.BMV_KFZ -> "BMV - Kfz-Zulassung"
+                AppointmentType.AUSLAENDERBEHOERDE -> "Ausländerbehörde"
                 AppointmentType.KRANKENKASSE -> "Krankenkasse"
+                AppointmentType.HAUSARZT -> "Hausarzt"
+                AppointmentType.FACHARZT -> "Facharzt"
+                AppointmentType.ZAHNARZT -> "Zahnarzt"
                 AppointmentType.BANK -> "Bank"
+                AppointmentType.STEUER -> "Steuerberater"
                 AppointmentType.SONSTIGES -> "Sonstiges"
             }
             Language.ENGLISH -> when (type) {
                 AppointmentType.KVR -> "KVR - Citizen's Office"
                 AppointmentType.AMT -> "Office - Authority"
+                AppointmentType.BMV_KFZ -> "BMV - Vehicle Registration"
+                AppointmentType.AUSLAENDERBEHOERDE -> "Immigration Office"
                 AppointmentType.KRANKENKASSE -> "Health Insurance"
+                AppointmentType.HAUSARZT -> "General Practitioner"
+                AppointmentType.FACHARZT -> "Specialist Doctor"
+                AppointmentType.ZAHNARZT -> "Dentist"
                 AppointmentType.BANK -> "Bank"
+                AppointmentType.STEUER -> "Tax Advisor"
                 AppointmentType.SONSTIGES -> "Other"
             }
             Language.TURKISH -> when (type) {
                 AppointmentType.KVR -> "KVR - Vatandaşlık Ofisi"
                 AppointmentType.AMT -> "Daire - Kurum"
+                AppointmentType.BMV_KFZ -> "BMV - Araç Kayıt"
+                AppointmentType.AUSLAENDERBEHOERDE -> "Göçmen Bürosu"
                 AppointmentType.KRANKENKASSE -> "Sağlık Sigortası"
+                AppointmentType.HAUSARZT -> "Aile Hekimi"
+                AppointmentType.FACHARZT -> "Uzman Doktor"
+                AppointmentType.ZAHNARZT -> "Diş Hekimi"
                 AppointmentType.BANK -> "Banka"
+                AppointmentType.STEUER -> "Mali Müşavir"
                 AppointmentType.SONSTIGES -> "Diğer"
             }
         }
     }
-
+    
+    // Category Names
+    fun getCategoryName(category: String): String {
+        return when (currentLanguage) {
+            Language.GERMAN -> when (category) {
+                "Behörde" -> "Behörde"
+                "Sağlık" -> "Gesundheit"
+                "Finans" -> "Finanzen"
+                else -> "Sonstiges"
+            }
+            Language.ENGLISH -> category
+            Language.TURKISH -> category
+        }
+    }
+    
     private val translations = mapOf(
         Language.GERMAN to mapOf(
             "app.title" to "Termin Tracker",
-            "personal.info" to "Persönliche Informationen",
-            "first.name" to "Vorname",
-            "last.name" to "Nachname",
-            "birth.date" to "Geburtsdatum",
-            "address" to "Adresse",
-            "city" to "Stadt",
-            "district" to "Bezirk",
-            "postal.code" to "PLZ",
-            "street" to "Straße",
-            "house.number" to "Hausnummer",
-            "save" to "Speichern",
-            "cancel" to "Abbrechen",
+            "appointments" to "Termine",
+            "add" to "Hinzufügen",
             "edit" to "Bearbeiten",
             "delete" to "Löschen",
-            "add" to "Hinzufügen",
+            "save" to "Speichern",
+            "cancel" to "Abbrechen",
             "search" to "Suchen",
             "settings" to "Einstellungen",
             "language" to "Sprache",
-            "appointment" to "Termin",
-            "appointments" to "Termine",
-            "new.appointment" to "Neuer Termin",
-            "appointment.type" to "Terminart",
-            "appointment.date" to "Termindatum",
-            "appointment.time" to "Terminzeit",
+            "notifications" to "Benachrichtigungen",
             "reminder" to "Erinnerung",
-            "reminder.before" to "Erinnerung vor",
-            "minutes" to "Minuten",
-            "documents" to "Dokumente",
-            "required.documents" to "Benötigte Dokumente",
-            "upload.file" to "Datei hochladen",
-            "export.ics" to "Kalender exportieren (ICS)",
-            "export.json" to "JSON exportieren",
-            "import.json" to "JSON importieren",
-            "auto.fill" to "Automatisch ausfüllen",
+            "location" to "Ort",
+            "date" to "Datum",
+            "time" to "Uhrzeit",
+            "type" to "Typ",
             "notes" to "Notizen",
-            "completed" to "Abgeschlossen",
-            "pending" to "Ausstehend",
-            "today" to "Heute",
-            "upcoming" to "Kommende",
-            "past" to "Vergangene"
+            "documents" to "Dokumente",
+            "status.pending" to "Ausstehend",
+            "status.confirmed" to "Bestätigt",
+            "status.completed" to "Abgeschlossen",
+            "status.cancelled" to "Storniert",
+            "error.generic" to "Ein Fehler ist aufgetreten",
+            "success.saved" to "Erfolgreich gespeichert",
+            "confirm.delete" to "Möchten Sie diesen Termin wirklich löschen?",
+            "no.results" to "Keine Ergebnisse gefunden",
+            "loading" to "Laden...",
+            "welcome" to "Willkommen bei Termin Tracker",
+            "next.appointment" to "Nächster Termin",
+            "past" to "Vergangen"
         ),
         Language.ENGLISH to mapOf(
             "app.title" to "Termin Tracker",
-            "personal.info" to "Personal Information",
-            "first.name" to "First Name",
-            "last.name" to "Last Name",
-            "birth.date" to "Birth Date",
-            "address" to "Address",
-            "city" to "City",
-            "district" to "District",
-            "postal.code" to "Postal Code",
-            "street" to "Street",
-            "house.number" to "House Number",
-            "save" to "Save",
-            "cancel" to "Cancel",
+            "appointments" to "Appointments",
+            "add" to "Add",
             "edit" to "Edit",
             "delete" to "Delete",
-            "add" to "Add",
+            "save" to "Save",
+            "cancel" to "Cancel",
             "search" to "Search",
             "settings" to "Settings",
             "language" to "Language",
-            "appointment" to "Appointment",
-            "appointments" to "Appointments",
-            "new.appointment" to "New Appointment",
-            "appointment.type" to "Appointment Type",
-            "appointment.date" to "Appointment Date",
-            "appointment.time" to "Appointment Time",
+            "notifications" to "Notifications",
             "reminder" to "Reminder",
-            "reminder.before" to "Remind before",
-            "minutes" to "minutes",
-            "documents" to "Documents",
-            "required.documents" to "Required Documents",
-            "upload.file" to "Upload File",
-            "export.ics" to "Export Calendar (ICS)",
-            "export.json" to "Export JSON",
-            "import.json" to "Import JSON",
-            "auto.fill" to "Auto-fill",
+            "location" to "Location",
+            "date" to "Date",
+            "time" to "Time",
+            "type" to "Type",
             "notes" to "Notes",
-            "completed" to "Completed",
-            "pending" to "Pending",
-            "today" to "Today",
-            "upcoming" to "Upcoming",
+            "documents" to "Documents",
+            "status.pending" to "Pending",
+            "status.confirmed" to "Confirmed",
+            "status.completed" to "Completed",
+            "status.cancelled" to "Cancelled",
+            "error.generic" to "An error occurred",
+            "success.saved" to "Saved successfully",
+            "confirm.delete" to "Do you really want to delete this appointment?",
+            "no.results" to "No results found",
+            "loading" to "Loading...",
+            "welcome" to "Welcome to Termin Tracker",
+            "next.appointment" to "Next Appointment",
             "past" to "Past"
         ),
         Language.TURKISH to mapOf(
             "app.title" to "Termin Tracker",
-            "personal.info" to "Kişisel Bilgiler",
-            "first.name" to "İsim",
-            "last.name" to "Soyisim",
-            "birth.date" to "Doğum Tarihi",
-            "address" to "Adres",
-            "city" to "Şehir",
-            "district" to "İlçe",
-            "postal.code" to "Posta Kodu",
-            "street" to "Sokak",
-            "house.number" to "Ev No",
-            "save" to "Kaydet",
-            "cancel" to "İptal",
+            "appointments" to "Randevular",
+            "add" to "Ekle",
             "edit" to "Düzenle",
             "delete" to "Sil",
-            "add" to "Ekle",
+            "save" to "Kaydet",
+            "cancel" to "İptal",
             "search" to "Ara",
             "settings" to "Ayarlar",
             "language" to "Dil",
-            "appointment" to "Randevu",
-            "appointments" to "Randevular",
-            "new.appointment" to "Yeni Randevu",
-            "appointment.type" to "Randevu Türü",
-            "appointment.date" to "Randevu Tarihi",
-            "appointment.time" to "Randevu Saati",
+            "notifications" to "Bildirimler",
             "reminder" to "Hatırlatma",
-            "reminder.before" to "Şu süre önce hatırlat",
-            "minutes" to "dakika",
-            "documents" to "Evraklar",
-            "required.documents" to "Gerekli Evraklar",
-            "upload.file" to "Dosya Yükle",
-            "export.ics" to "Takvimi Dışa Aktar (ICS)",
-            "export.json" to "JSON Dışa Aktar",
-            "import.json" to "JSON İçe Aktar",
-            "auto.fill" to "Otomatik Doldur",
+            "location" to "Konum",
+            "date" to "Tarih",
+            "time" to "Saat",
+            "type" to "Tür",
             "notes" to "Notlar",
-            "completed" to "Tamamlandı",
-            "pending" to "Bekliyor",
-            "today" to "Bugün",
-            "upcoming" to "Yaklaşan",
+            "documents" to "Belgeler",
+            "status.pending" to "Bekliyor",
+            "status.confirmed" to "Onaylandı",
+            "status.completed" to "Tamamlandı",
+            "status.cancelled" to "İptal Edildi",
+            "error.generic" to "Bir hata oluştu",
+            "success.saved" to "Başarıyla kaydedildi",
+            "confirm.delete" to "Bu randevuyu silmek istediğinize emin misiniz?",
+            "no.results" to "Sonuç bulunamadı",
+            "loading" to "Yükleniyor...",
+            "welcome" to "Termin Tracker'a hoş geldiniz",
+            "next.appointment" to "Sonraki Randevu",
             "past" to "Geçmiş"
         )
     )
