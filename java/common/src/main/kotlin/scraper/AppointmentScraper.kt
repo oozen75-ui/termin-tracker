@@ -127,8 +127,10 @@ object ScraperFactory {
             SearchType.CLINIC_WEBSITE -> ClinicWebsiteScraper()
             SearchType.PRIVATE_DOCTOR -> PrivateDoctorScraper()
             SearchType.GENERIC -> GenericScraper()
-            // Resmi kurum scraper'ları yapım aşamasında
-            else -> GenericScraper()
+            // Resmi kurum scraper'ları
+            SearchType.BERLIN_SERVICE_PORTAL -> BerlinServicePortalScraper()
+            SearchType.BMV -> BMVScraper()
+            SearchType.PASSPORT_VISA -> PassportVisaScraper()
         }
     }
     
@@ -137,6 +139,9 @@ object ScraperFactory {
             DoctolibScraper(),
             ClinicWebsiteScraper(),
             PrivateDoctorScraper(),
+            BerlinServicePortalScraper(),
+            BMVScraper(),
+            PassportVisaScraper(),
             GenericScraper()
         )
     }
