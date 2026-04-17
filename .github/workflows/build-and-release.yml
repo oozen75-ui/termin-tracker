@@ -1,0 +1,110 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  # Linux Build (.deb)
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      
+    - name: Build .deb package
+      run: |
+        cd java
+        ./gradlew :desktop:packageDeb
+        
+    - name: Upload .deb artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: termin-tracker-linux
+        path: java/desktop/build/compose/binaries/main/deb/*.deb
+
+  # Windows Build (.exe)
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      
+    - name: Build .exe package
+      run: |
+        cd java
+        .\gradlew.bat :desktop:packageExe
+        
+    - name: Upload .exe artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: termin-tracker-windows
+        path: java/desktop/build/compose/binaries/main/exe/*.exe
+
+  # macOS Build (.dmg) - Optional
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      
+    - name: Build .dmg package
+      run: |
+        cd java
+        ./gradlew :desktop:packageDmg
+        
+    - name: Upload .dmg artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: termin-tracker-macos
+        path: java/desktop/build/compose/binaries/main/dmg/*.dmg
+
+  # Create Release
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          termin-tracker-linux/*.deb
+          termin-tracker-windows/*.exe
+          termin-tracker-macos/*.dmg
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -236,9 +236,16 @@ private fun getIconForType(type: AppointmentType): androidx.compose.ui.graphics.
     return when (type) {
         AppointmentType.KVR -> Icons.Default.AccountBalance
         AppointmentType.AMT -> Icons.Default.Business
+        AppointmentType.BMV_KFZ -> Icons.Default.DirectionsCar
+        AppointmentType.AUSLAENDERBEHOERDE -> Icons.Default.Fingerprint
         AppointmentType.KRANKENKASSE -> Icons.Default.LocalHospital
+        AppointmentType.HAUSARZT -> Icons.Default.MedicalServices
+        AppointmentType.FACHARZT -> Icons.Default.Healing
+        AppointmentType.ZAHNARZT -> Icons.Default.MedicalServices
         AppointmentType.BANK -> Icons.Default.AccountBalanceWallet
+        AppointmentType.STEUER -> Icons.Default.Calculate
         AppointmentType.SONSTIGES -> Icons.Default.MoreHoriz
+        else -> Icons.Default.MoreHoriz
     }
 }
 

@@ -237,8 +237,7 @@ class AppointmentViewModel {
 
     // Get required documents for appointment type
     fun getRequiredDocumentsForType(type: AppointmentType): List<RequiredDocument> {
-        val langCode = _personalInfo.value.preferredLanguage.code
-        return RequiredDocumentsList.getDocumentsForLanguage(type, langCode)
+        return RequiredDocumentsList.getRequiredDocuments(type)
     }
 
     fun dispose() {

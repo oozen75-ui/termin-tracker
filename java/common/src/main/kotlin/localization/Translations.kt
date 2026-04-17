@@ -16,6 +16,15 @@ object Translations {
         return translations[currentLanguage]?.get(key) ?: key
     }
     
+    // Generic getter for appointment type label
+    fun appointmentType(): String {
+        return when (currentLanguage) {
+            Language.GERMAN -> "Terminart"
+            Language.ENGLISH -> "Appointment Type"
+            Language.TURKISH -> "Randevu Türü"
+        }
+    }
+    
     // Appointment Type Names
     fun getAppointmentTypeName(type: AppointmentType): String {
         return when (currentLanguage) {

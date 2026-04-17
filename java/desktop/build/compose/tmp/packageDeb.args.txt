@@ -1,0 +1,44 @@
+--input
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/java/desktop/build/compose/tmp/packageDeb/libs"
+--runtime-image
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/java/desktop/build/compose/tmp/main/runtime"
+--resource-dir
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/java/desktop/build/compose/tmp/resources"
+--java-options
+"'-Dcompose.application.resources.dir=$APPDIR/resources'"
+--main-jar
+"desktop-1.0.1-3c4a4450c558a132ab9e71122d308082.jar"
+--main-class
+"MainKt"
+--icon
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/java/desktop/build/compose/default-resources/1.6.2/default-icon-linux.png"
+--java-options
+"'-Dcompose.application.configure.swing.globals=true'"
+--java-options
+"'-Dskiko.library.path=$APPDIR'"
+--license-file
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/LICENSE.txt"
+--resource-dir
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/java/desktop/build/compose/tmp/resources"
+--linux-app-release
+"1"
+--linux-app-category
+"Office"
+--linux-deb-maintainer
+"technic-gnius@example.com"
+--linux-menu-group
+"Office"
+--type
+"deb"
+--dest
+"/home/ozzy/.openclaw/workspace/projects/termin-tracker-final/java/desktop/build/compose/binaries/main/deb"
+--name
+"TerminTracker"
+--description
+"Almanya Randevu Takip Sistemi"
+--copyright
+"© 2026 Technic Genius GmbH"
+--app-version
+"2.0.0"
+--vendor
+"Technic Genius GmbH"
