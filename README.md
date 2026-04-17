@@ -21,8 +21,17 @@ Almanya'da yaşayanlar için kapsamlı randevu takip ve yönetim sistemi.
 
 ### Modern UI
 - **Material Design 3:** Güncel Android/iOS standartlarında arayüz
-- **Çoklu Dil Desteği:** Almanca, İngilizce, Türkçe
+- **Çoklu Dil Desteği:** 
+  - 🇩🇪 **Almanca (Varsayılan)**
+  - 🇬🇧 İngilizce
+  - 🇹🇷 Türkçe
 - **Karanlık/Aydınlık Tema:** Sistem temasına uyumlu
+
+### Dil Ayarları
+Sistem varsayılan olarak **Almanca** dilinde çalışır. Dil değiştirmek için:
+1. Ayarlar (Settings) menüsüne gidin
+2. Dil (Language) seçeneğinden istediğiniz dili seçin
+3. Değişiklikler otomatik uygulanır
 
 ### Veri Yönetimi
 - **Offline Çalışma:** İnternet olmadan tam fonksiyonellik
