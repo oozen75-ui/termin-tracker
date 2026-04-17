@@ -1,5 +1,7 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -9,18 +11,50 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import androidx.compose.ui.window.*
+import com.termintracker.components.*
+import com.termintracker.database.DatabaseManager
+import com.termintracker.localization.Translations
+import com.termintracker.model.*
+import com.termintracker.viewmodel.AppointmentViewModel
+import com.termintracker.viewmodel.OnlineSearchViewModel
+import kotlinx.coroutines.*
+import kotlinx.datetime.*
+import java.io.File
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
+import kotlin.system.exitProcess
+
+// Screen navigation
+sealed class Screen {
+    object Appointments : Screen()
+    object PersonalInfo : Screen()
+    object OnlineSearch : Screen()
+    object Settings : Screen()
+}
 
 fun main() = application {
+    DatabaseManager.initialize()
+    val viewModel = remember { AppointmentViewModel() }
+    
+    LaunchedEffect(Unit) {
+        val lang = viewModel.personalInfo.value.preferredLanguage
+        Translations.setLanguage(lang)
+    }
+    
     Window(
-        onCloseRequest = ::exitApplication,
-        title = "Termin Tracker v1.0.1",
-        resizable = true
+        onCloseRequest = {
+            viewModel.dispose()
+            DatabaseManager.close()
+            exitApplication()
+        },
+        title = "Termin Tracker v1.0.2",
+        resizable = true,
+        state = rememberWindowState(width = 1200.dp, height = 800.dp)
     ) {
         MaterialTheme {
             Surface {
-                TerminTrackerApp()
+                TerminTrackerApp(viewModel)
             }
         }
     }
@@ -28,233 +62,366 @@ fun main() = application {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TerminTrackerApp() {
-    val scrollState = rememberScrollState()
+fun TerminTrackerApp(viewModel: AppointmentViewModel) {
+    val appointments by viewModel.appointments.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val personalInfo by viewModel.personalInfo.collectAsState()
     
-    // Form verileri
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf("") }
-    var selectedCity by remember { mutableStateOf("") }
-    var selectedDistrict by remember { mutableStateOf("") }
-    var postalCode by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    
-    // Dropdown durumları
-    var cityExpanded by remember { mutableStateOf(false) }
-    var districtExpanded by remember { mutableStateOf(false) }
-    
-    // Şehir listesi (offline)
-    val cities = listOf(
-        "Berlin", "Hamburg", "München", "Köln", "Frankfurt",
-        "Stuttgart", "Düsseldorf", "Dortmund", "Essen", "Leipzig"
-    )
-    
-    // İlçe listesi (basit)
-    val districts = when (selectedCity) {
-        "Berlin" -> listOf("Mitte", "Charlottenburg", "Kreuzberg", "Neukölln")
-        "Hamburg" -> listOf("Altona", "Eimsbüttel", "Wandsbek")
-        "München" -> listOf("Schwabing", "Ludwigsvorstadt", "Sendling")
-        "Köln" -> listOf("Altstadt", "Neustadt", "Ehrenfeld")
-        "Frankfurt" -> listOf("Innenstadt", "Westend", "Sachsenhausen")
-        else -> listOf("Merkez", "Nord", "Ost", "Süd", "West")
-    }
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Appointments) }
+    var showAddAppointment by remember { mutableStateOf(false) }
+    var selectedAppointment by remember { mutableStateOf<Appointment?>(null) }
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Termin Tracker v1.0.1") },
+                title = { Text("Termin Tracker v1.0.2") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.primary
-                )
+                ),
+                actions = {
+                    var langExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { langExpanded = true }) {
+                            Text(
+                                when (personalInfo.preferredLanguage) {
+                                    Language.GERMAN -> "DE"
+                                    Language.ENGLISH -> "EN"
+                                    Language.TURKISH -> "TR"
+                                },
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = langExpanded,
+                            onDismissRequest = { langExpanded = false }
+                        ) {
+                            Language.entries.forEach { lang ->
+                                DropdownMenuItem(
+                                    text = { Text(lang.displayName) },
+                                    onClick = {
+                                        viewModel.setLanguage(lang)
+                                        langExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             )
+        },
+        floatingActionButton = {
+            if (currentScreen == Screen.Appointments) {
+                FloatingActionButton(
+                    onClick = { showAddAppointment = true }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Yeni Randevu")
+                }
+            }
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.CalendarToday, null) },
+                    label = { Text("Randevular") },
+                    selected = currentScreen == Screen.Appointments,
+                    onClick = { currentScreen = Screen.Appointments }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Person, null) },
+                    label = { Text("Kişisel") },
+                    selected = currentScreen == Screen.PersonalInfo,
+                    onClick = { currentScreen = Screen.PersonalInfo }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Search, null) },
+                    label = { Text("Online Ara") },
+                    selected = currentScreen == Screen.OnlineSearch,
+                    onClick = { currentScreen = Screen.OnlineSearch }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Settings, null) },
+                    label = { Text("Ayarlar") },
+                    selected = currentScreen == Screen.Settings,
+                    onClick = { currentScreen = Screen.Settings }
+                )
+            }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            when (currentScreen) {
+                Screen.Appointments -> AppointmentsScreen(
+                    appointments = appointments,
+                    viewModel = viewModel,
+                    onEditAppointment = { appointment ->
+                        selectedAppointment = appointment
+                        showAddAppointment = true
+                    }
+                )
+                Screen.PersonalInfo -> PersonalInfoScreen(
+                    personalInfo = personalInfo,
+                    onSave = { viewModel.savePersonalInfo(it) }
+                )
+                Screen.OnlineSearch -> OnlineSearchScreen(
+                    viewModel = remember { OnlineSearchViewModel() }
+                )
+                Screen.Settings -> SettingsScreen(viewModel = viewModel)
+            }
             
-            // Kişisel Bilgiler Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+        }
+    }
+    
+    if (showAddAppointment) {
+        AppointmentFormDialog(
+            appointment = selectedAppointment,
+            onDismiss = {
+                showAddAppointment = false
+                selectedAppointment = null
+            },
+            onSave = { appointment ->
+                if (selectedAppointment == null) {
+                    viewModel.addAppointment(appointment)
+                } else {
+                    viewModel.updateAppointment(appointment)
+                }
+                showAddAppointment = false
+                selectedAppointment = null
+            },
+            onDelete = { appointment ->
+                viewModel.deleteAppointment(appointment.id)
+                showAddAppointment = false
+                selectedAppointment = null
+            }
+        )
+    }
+}
+
+@Composable
+fun AppointmentsScreen(
+    appointments: List<Appointment>,
+    viewModel: AppointmentViewModel,
+    onEditAppointment: (Appointment) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Randevular",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        if (appointments.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Kişisel Bilgiler",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    // İsim
-                    OutlinedTextField(
-                        value = firstName,
-                        onValueChange = { firstName = it },
-                        label = { Text("İsim *") },
-                        leadingIcon = { Icon(Icons.Default.Person, null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    // Soyisim
-                    OutlinedTextField(
-                        value = lastName,
-                        onValueChange = { lastName = it },
-                        label = { Text("Soyisim *") },
-                        leadingIcon = { Icon(Icons.Default.PersonOutline, null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    // Doğum tarihi
-                    OutlinedTextField(
-                        value = birthDate,
-                        onValueChange = { birthDate = it },
-                        label = { Text("Doğum Tarihi") },
-                        leadingIcon = { Icon(Icons.Default.CalendarToday, null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text("GG.AA.YYYY") }
+                Text(
+                    text = "Henüz randevu eklenmemiş",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn {
+                items(appointments, key = { it.id }) { appointment ->
+                    AppointmentCard(
+                        appointment = appointment,
+                        onClick = { onEditAppointment(appointment) }
                     )
                 }
             }
-            
-            // Adres Bilgileri Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Adres Bilgileri",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    // Şehir Dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = cityExpanded,
-                        onExpandedChange = { cityExpanded = !cityExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = selectedCity,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Şehir *") },
-                            leadingIcon = { Icon(Icons.Default.LocationCity, null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = cityExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = cityExpanded,
-                            onDismissRequest = { cityExpanded = false }
-                        ) {
-                            cities.forEach { city ->
-                                DropdownMenuItem(
-                                    text = { Text(city) },
-                                    onClick = {
-                                        selectedCity = city
-                                        selectedDistrict = ""
-                                        cityExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    
-                    // İlçe Dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = districtExpanded,
-                        onExpandedChange = { if (selectedCity.isNotEmpty()) districtExpanded = !districtExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = selectedDistrict,
-                            onValueChange = {},
-                            readOnly = true,
-                            enabled = selectedCity.isNotEmpty(),
-                            label = { Text("İlçe / Bezirk") },
-                            leadingIcon = { Icon(Icons.Default.Map, null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = districtExpanded,
-                            onDismissRequest = { districtExpanded = false }
-                        ) {
-                            districts.forEach { district ->
-                                DropdownMenuItem(
-                                    text = { Text(district) },
-                                    onClick = {
-                                        selectedDistrict = district
-                                        districtExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Posta Kodu
-                    OutlinedTextField(
-                        value = postalCode,
-                        onValueChange = { postalCode = it },
-                        label = { Text("Posta Kodu (PLZ)") },
-                        leadingIcon = { Icon(Icons.Default.MarkunreadMailbox, null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    // Adres
-                    OutlinedTextField(
-                        value = address,
-                        onValueChange = { address = it },
-                        label = { Text("Sokak / Cadde / No") },
-                        leadingIcon = { Icon(Icons.Default.Home, null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 3
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Kaydet Butonu
-            Button(
-                onClick = {
-                    println("Kaydedildi: $firstName $lastName, $selectedCity")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = firstName.isNotBlank() && lastName.isNotBlank()
-            ) {
-                Icon(Icons.Default.Save, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Kaydet")
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
-@Preview
 @Composable
-fun TerminTrackerAppPreview() {
-    MaterialTheme {
-        TerminTrackerApp()
+fun AppointmentCard(
+    appointment: Appointment,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = appointment.title,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = appointment.location,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = appointment.dateTime.toString(),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+fun PersonalInfoScreen(
+    personalInfo: PersonalInfo,
+    onSave: (PersonalInfo) -> Unit
+) {
+    var firstName by remember { mutableStateOf(personalInfo.firstName) }
+    var lastName by remember { mutableStateOf(personalInfo.lastName) }
+    var email by remember { mutableStateOf(personalInfo.email) }
+    var phone by remember { mutableStateOf(personalInfo.phone) }
+    var addressText by remember { mutableStateOf(personalInfo.defaultAddress.toDisplayString()) }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "Kişisel Bilgiler",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        OutlinedTextField(
+            value = firstName,
+            onValueChange = { firstName = it },
+            label = { Text("Ad") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = lastName,
+            onValueChange = { lastName = it },
+            label = { Text("Soyad") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("E-posta") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = phone,
+            onValueChange = { phone = it },
+            label = { Text("Telefon") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        OutlinedTextField(
+            value = addressText,
+            onValueChange = { addressText = it },
+            label = { Text("Adres") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Button(
+            onClick = {
+                onSave(
+                    personalInfo.copy(
+                        firstName = firstName,
+                        lastName = lastName,
+                        email = email,
+                        phone = phone,
+                        defaultAddress = Address(street = addressText)
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Kaydet")
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(viewModel: AppointmentViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Ayarlar",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Veri Yönetimi",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = { /* TODO: Export */ },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Verileri Dışa Aktar")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = { /* TODO: Import */ },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Verileri İçe Aktar")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedButton(
+                    onClick = { /* TODO: Clear all data */ },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Tüm Verileri Sil", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
     }
 }

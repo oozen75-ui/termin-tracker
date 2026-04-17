@@ -18,7 +18,6 @@ Almanya'da yaşayanlar için randevu takip ve yönetim sistemi.
 | Kotlin | 1.9.22 LTS |
 | Compose Desktop | 1.6.2 |
 | Gradle | 8.7 |
-| **Node.js** | **24.x LTS** |
 | Coroutines | 1.8.0 |
 
 ## 🏗️ Build

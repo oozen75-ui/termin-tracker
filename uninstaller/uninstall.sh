@@ -27,6 +27,14 @@ if [ -d "$CONFIG_DIR" ]; then
     echo "✓ Yapılandırma silindi"
 fi
 
+# SQLite database
+DB_FILE="$HOME/termin_tracker.db"
+if [ -f "$DB_FILE" ]; then
+    echo "✓ Veritabanı bulundu: $DB_FILE"
+    rm "$DB_FILE"
+    echo "✓ Veritabanı silindi"
+fi
+
 # Masaüstü kısayolu
 DESKTOP_FILE="$HOME/.local/share/applications/termin-tracker.desktop"
 if [ -f "$DESKTOP_FILE" ]; then

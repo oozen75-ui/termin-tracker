@@ -1,0 +1,854 @@
+import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.application
+import com.termintracker.data.*
+import com.termintracker.database.DatabaseManager
+import com.termintracker.calendar.CalendarExport
+import com.termintracker.network.OpenStreetMapService
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.File
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
+
+sealed class Screen {
+    object AppointmentList : Screen()
+    data class AppointmentForm(val appointmentId: Long? = null) : Screen()
+    object Settings : Screen()
+}
+
+fun main() = application {
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "Termin Tracker v1.0.1",
+        resizable = true
+    ) {
+        MaterialTheme {
+            Surface {
+                TerminTrackerApp()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TerminTrackerApp() {
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.AppointmentList) }
+    val dbManager = remember { DatabaseManager() }
+    val scope = rememberCoroutineScope()
+    var appointments by remember { mutableStateOf(listOf<Appointment>()) }
+    
+    LaunchedEffect(Unit) {
+        appointments = dbManager.getAllAppointments()
+    }
+    
+    fun refreshAppointments() {
+        scope.launch {
+            appointments = dbManager.getAllAppointments()
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(Localization.getString("app_name")) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.primary
+                ),
+                actions = {
+                    IconButton(onClick = { currentScreen = Screen.Settings }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            if (currentScreen is Screen.AppointmentList) {
+                FloatingActionButton(
+                    onClick = { currentScreen = Screen.AppointmentForm(null) }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                }
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when (val screen = currentScreen) {
+                is Screen.AppointmentList -> {
+                    AppointmentListScreen(
+                        appointments = appointments,
+                        onEdit = { id -> currentScreen = Screen.AppointmentForm(id) },
+                        onDelete = { id ->
+                            scope.launch {
+                                dbManager.deleteAppointment(id)
+                                refreshAppointments()
+                            }
+                        },
+                        onExportJson = { exportToJson(dbManager) }
+                    )
+                }
+                is Screen.AppointmentForm -> {
+                    AppointmentFormScreen(
+                        appointmentId = screen.appointmentId,
+                        dbManager = dbManager,
+                        onSave = {
+                            refreshAppointments()
+                            currentScreen = Screen.AppointmentList
+                        },
+                        onCancel = { currentScreen = Screen.AppointmentList }
+                    )
+                }
+                is Screen.Settings -> {
+                    SettingsScreen(
+                        dbManager = dbManager,
+                        onImportJson = {
+                            importFromJson(dbManager) { refreshAppointments() }
+                        },
+                        onBack = { currentScreen = Screen.AppointmentList }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppointmentListScreen(
+    appointments: List<Appointment>,
+    onEdit: (Long) -> Unit,
+    onDelete: (Long) -> Unit,
+    onExportJson: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = Localization.getString("appointments"),
+                style = MaterialTheme.typography.headlineSmall
+            )
+            OutlinedButton(onClick = onExportJson) {
+                Icon(Icons.Default.Upload, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(Localization.getString("export"))
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        if (appointments.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.EventBusy,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = Localization.getString("no_appointments"),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(appointments) { appointment ->
+                    AppointmentCard(appointment, { onEdit(appointment.id) }, { onDelete(appointment.id) })
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppointmentCard(
+    appointment: Appointment,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${appointment.firstName} ${appointment.lastName}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = appointment.appointmentType.getDisplayName(Localization.getLanguage()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${appointment.appointmentDate} ${appointment.appointmentTime}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${appointment.city}${if (appointment.district.isNotBlank()) " - ${appointment.district}" else ""}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(Localization.getString("edit")) },
+                            leadingIcon = { Icon(Icons.Default.Edit, null) },
+                            onClick = { showMenu = false; onEdit() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(Localization.getString("delete")) },
+                            leadingIcon = { Icon(Icons.Default.Delete, null) },
+                            onClick = { showMenu = false; onDelete() }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppointmentFormScreen(
+    appointmentId: Long?,
+    dbManager: DatabaseManager,
+    onSave: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+    
+    var existingAppointment by remember { mutableStateOf<Appointment?>(null) }
+    
+    LaunchedEffect(appointmentId) {
+        if (appointmentId != null) {
+            existingAppointment = dbManager.getAllAppointments().find { it.id == appointmentId }
+        }
+    }
+    
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var birthDate by remember { mutableStateOf("") }
+    var selectedCity by remember { mutableStateOf("") }
+    var selectedDistrict by remember { mutableStateOf("") }
+    var postalCode by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(AppointmentType.KVR) }
+    var appointmentDate by remember { mutableStateOf("") }
+    var appointmentTime by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+    var reminderMinutes by remember { mutableStateOf(60) }
+    
+    LaunchedEffect(existingAppointment) {
+        existingAppointment?.let { apt ->
+            firstName = apt.firstName
+            lastName = apt.lastName
+            birthDate = apt.birthDate
+            selectedCity = apt.city
+            selectedDistrict = apt.district
+            postalCode = apt.postalCode
+            address = apt.address
+            selectedType = apt.appointmentType
+            appointmentDate = apt.appointmentDate
+            appointmentTime = apt.appointmentTime
+            notes = apt.notes
+            reminderMinutes = apt.reminderMinutes
+        }
+    }
+    
+    var typeExpanded by remember { mutableStateOf(false) }
+    var reminderExpanded by remember { mutableStateOf(false) }
+    
+    val openStreetMapService = remember { OpenStreetMapService() }
+    val reminderOptions = listOf(15, 30, 60, 120)
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Personal Info
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = Localization.getString("personal_info"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                OutlinedTextField(value = firstName, onValueChange = { firstName = it }, label = { Text(Localization.getString("first_name") + " *") }, leadingIcon = { Icon(Icons.Default.Person, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(value = lastName, onValueChange = { lastName = it }, label = { Text(Localization.getString("last_name") + " *") }, leadingIcon = { Icon(Icons.Default.PersonOutline, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(value = birthDate, onValueChange = { birthDate = it }, label = { Text(Localization.getString("birth_date")) }, leadingIcon = { Icon(Icons.Default.CalendarToday, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("DD.MM.YYYY") })
+            }
+        }
+        
+        // Appointment Info
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = Localization.getString("appointment_info"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                
+                ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = !typeExpanded }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(value = selectedType.getDisplayName(Localization.getLanguage()), onValueChange = {}, readOnly = true, label = { Text(Localization.getString("appointment_type") + " *") }, leadingIcon = { Icon(Icons.Default.Business, null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+                    ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
+                        AppointmentType.values().forEach { type ->
+                            DropdownMenuItem(text = { Text(type.getDisplayName(Localization.getLanguage())) }, onClick = { selectedType = type; typeExpanded = false })
+                        }
+                    }
+                }
+                
+                OutlinedTextField(value = appointmentDate, onValueChange = { appointmentDate = it }, label = { Text(Localization.getString("appointment_date") + " *") }, leadingIcon = { Icon(Icons.Default.Event, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("YYYY-MM-DD") })
+                OutlinedTextField(value = appointmentTime, onValueChange = { appointmentTime = it }, label = { Text(Localization.getString("appointment_time") + " *") }, leadingIcon = { Icon(Icons.Default.Schedule, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("HH:MM") })
+                OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text(Localization.getString("notes")) }, leadingIcon = { Icon(Icons.Default.Notes, null) }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4)
+                
+                ExposedDropdownMenuBox(expanded = reminderExpanded, onExpandedChange = { reminderExpanded = !reminderExpanded }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(value = "$reminderMinutes ${Localization.getString("minutes_before")}", onValueChange = {}, readOnly = true, label = { Text(Localization.getString("reminder")) }, leadingIcon = { Icon(Icons.Default.Alarm, null) }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = reminderExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+                    ExposedDropdownMenu(expanded = reminderExpanded, onDismissRequest = { reminderExpanded = false }) {
+                        reminderOptions.forEach { minutes ->
+                            DropdownMenuItem(text = { Text("$minutes ${Localization.getString("minutes_before")}") }, onClick = { reminderMinutes = minutes; reminderExpanded = false })
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Address Info
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = Localization.getString("address_info"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                
+                // City autocomplete with OpenStreetMap - Box + DropdownMenu
+                var citySuggestions by remember { mutableStateOf(listOf<com.termintracker.network.AddressResult>()) }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = selectedCity,
+                        onValueChange = { newValue ->
+                            selectedCity = newValue
+                            if (newValue.length >= 3) {
+                                scope.launch {
+                                    delay(300)
+                                    val results = openStreetMapService.searchAddress(newValue)
+                                    citySuggestions = results
+                                }
+                            } else {
+                                citySuggestions = emptyList()
+                            }
+                        },
+                        label = { Text(Localization.getString("city") + " *") },
+                        leadingIcon = { Icon(Icons.Default.LocationCity, null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    DropdownMenu(
+                        expanded = citySuggestions.isNotEmpty(),
+                        onDismissRequest = { citySuggestions = emptyList() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        citySuggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = suggestion.city,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    selectedCity = suggestion.city
+                                    postalCode = suggestion.postalCode
+                                    selectedDistrict = suggestion.district
+                                    cityExpanded = false
+                                    citySuggestions = emptyList()
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Debounced search effect for City
+                LaunchedEffect(selectedCity) {
+                    if (selectedCity.length >= 3) {
+                        delay(300)
+                        scope.launch {
+                            val results = openStreetMapService.searchAddress(selectedCity)
+                            citySuggestions = results
+                            cityExpanded = results.isNotEmpty()
+                        }
+                    } else {
+                        citySuggestions = emptyList()
+                        cityExpanded = false
+                    }
+                }
+                
+                // District autocomplete with OpenStreetMap
+                var districtExpanded by remember { mutableStateOf(false) }
+                var districtSuggestions by remember { mutableStateOf(listOf<String>()) }
+                
+                // Fetch districts when city changes
+                LaunchedEffect(selectedCity) {
+                    if (selectedCity.isNotBlank()) {
+                        scope.launch {
+                            val districts = openStreetMapService.getDistrictsForCity(selectedCity)
+                            districtSuggestions = districts
+                        }
+                    }
+                }
+                
+                ExposedDropdownMenuBox(
+                    expanded = districtExpanded,
+                    onExpandedChange = { districtExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedDistrict,
+                        onValueChange = { newValue ->
+                            selectedDistrict = newValue
+                        },
+                        label = { Text(Localization.getString("district")) },
+                        leadingIcon = { Icon(Icons.Default.Map, null) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = districtExpanded && districtSuggestions.isNotEmpty(),
+                        onDismissRequest = { districtExpanded = false }
+                    ) {
+                        districtSuggestions.forEach { district ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = district,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    selectedDistrict = district
+                                    districtExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Postal Code autocomplete with OpenStreetMap
+                var postalCodeExpanded by remember { mutableStateOf(false) }
+                var postalCodeSuggestions by remember { mutableStateOf(listOf<com.termintracker.network.AddressResult>()) }
+                ExposedDropdownMenuBox(
+                    expanded = postalCodeExpanded,
+                    onExpandedChange = { postalCodeExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = postalCode,
+                        onValueChange = { newValue ->
+                            postalCode = newValue
+                            postalCodeExpanded = newValue.length >= 3
+                        },
+                        label = { Text(Localization.getString("postal_code")) },
+                        leadingIcon = { Icon(Icons.Default.MarkunreadMailbox, null) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = postalCodeExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = postalCodeExpanded,
+                        onDismissRequest = { postalCodeExpanded = false }
+                    ) {
+                        postalCodeSuggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = "${suggestion.postalCode} - ${suggestion.city}",
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    postalCode = suggestion.postalCode
+                                    selectedCity = suggestion.city
+                                    selectedDistrict = suggestion.district
+                                    postalCodeExpanded = false
+                                    postalCodeSuggestions = emptyList()
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Debounced search effect for Postal Code
+                LaunchedEffect(postalCode) {
+                    if (postalCode.length >= 3) {
+                        delay(300)
+                        scope.launch {
+                            val results = openStreetMapService.searchAddress(postalCode)
+                            postalCodeSuggestions = results
+                            postalCodeExpanded = results.isNotEmpty()
+                        }
+                    } else {
+                        postalCodeSuggestions = emptyList()
+                        postalCodeExpanded = false
+                    }
+                }
+                
+                // Address/Street autocomplete with OpenStreetMap
+                var addressExpanded by remember { mutableStateOf(false) }
+                var addressSuggestions by remember { mutableStateOf(listOf<com.termintracker.network.AddressResult>()) }
+                ExposedDropdownMenuBox(
+                    expanded = addressExpanded,
+                    onExpandedChange = { addressExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { newValue ->
+                            address = newValue
+                            addressExpanded = newValue.length >= 3
+                        },
+                        label = { Text(Localization.getString("street")) },
+                        leadingIcon = { Icon(Icons.Default.Home, null) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = addressExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = addressExpanded,
+                        onDismissRequest = { addressExpanded = false }
+                    ) {
+                        addressSuggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(
+                                        text = suggestion.fullAddress,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    address = buildString {
+                                        append(suggestion.street)
+                                        if (suggestion.houseNumber.isNotBlank()) {
+                                            append(" ")
+                                            append(suggestion.houseNumber)
+                                        }
+                                    }
+                                    postalCode = suggestion.postalCode
+                                    selectedCity = suggestion.city
+                                    selectedDistrict = suggestion.district
+                                    addressExpanded = false
+                                    addressSuggestions = emptyList()
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Debounced search effect for Address
+                LaunchedEffect(address) {
+                    if (address.length >= 3) {
+                        delay(300)
+                        scope.launch {
+                            val results = openStreetMapService.searchAddress(address)
+                            addressSuggestions = results
+                            addressExpanded = results.isNotEmpty()
+                        }
+                    } else {
+                        addressSuggestions = emptyList()
+                        addressExpanded = false
+                    }
+                }
+            }
+        }
+        
+        // Required Documents
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = Localization.getString("documents"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                val docs = selectedType.getRequiredDocuments()
+                docs.forEach { doc ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = true, onCheckedChange = null, enabled = false)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = doc.replace("_", " ").capitalize(), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // ICS Export Button
+        OutlinedButton(
+            onClick = {
+                val appointment = Appointment(
+                    id = appointmentId ?: 0,
+                    firstName = firstName,
+                    lastName = lastName,
+                    birthDate = birthDate,
+                    city = selectedCity,
+                    district = selectedDistrict,
+                    postalCode = postalCode,
+                    address = address,
+                    appointmentType = selectedType,
+                    appointmentDate = appointmentDate,
+                    appointmentTime = appointmentTime,
+                    notes = notes,
+                    reminderMinutes = reminderMinutes
+                )
+                exportToIcs(appointment)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("ICS Export")
+        }
+        
+        // Action Buttons
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                Text(Localization.getString("cancel"))
+            }
+            Button(
+                onClick = {
+                    val appointment = Appointment(
+                        id = appointmentId ?: 0,
+                        firstName = firstName,
+                        lastName = lastName,
+                        birthDate = birthDate,
+                        city = selectedCity,
+                        district = selectedDistrict,
+                        postalCode = postalCode,
+                        address = address,
+                        appointmentType = selectedType,
+                        appointmentDate = appointmentDate,
+                        appointmentTime = appointmentTime,
+                        notes = notes,
+                        reminderMinutes = reminderMinutes
+                    )
+                    scope.launch {
+                        if (appointmentId != null) {
+                            dbManager.updateAppointment(appointment)
+                        } else {
+                            dbManager.insertAppointment(appointment)
+                        }
+                        onSave()
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                enabled = firstName.isNotBlank() && lastName.isNotBlank() && selectedCity.isNotBlank() && appointmentDate.isNotBlank() && appointmentTime.isNotBlank()
+            ) {
+                Text(Localization.getString("save"))
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    dbManager: DatabaseManager,
+    onImportJson: () -> Unit,
+    onBack: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                text = Localization.getString("settings"),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Language Selection
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = Localization.getString("language"),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                val languages = listOf("de" to "Deutsch", "en" to "English", "tr" to "Türkçe")
+                val currentLang = Localization.getLanguage()
+                
+                languages.forEach { (code, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentLang == code,
+                            onClick = { Localization.setLanguage(code) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        
+        // Data Management
+        Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Data Management",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                OutlinedButton(
+                    onClick = onImportJson,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(Localization.getString("import"))
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedButton(
+                    onClick = { exportToJson(dbManager) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Upload, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(Localization.getString("export"))
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Version info
+        Text(
+            text = "Termin Tracker v1.0.1",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+    }
+}
+
+// Helper functions
+fun exportToJson(dbManager: DatabaseManager) {
+    val json = dbManager.exportToJson()
+    val fileChooser = JFileChooser().apply {
+        dialogTitle = "Export to JSON"
+        fileFilter = FileNameExtensionFilter("JSON files", "json")
+        selectedFile = File("termin_tracker_export.json")
+    }
+    if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+        File(fileChooser.selectedFile.absolutePath).writeText(json)
+    }
+}
+
+fun importFromJson(dbManager: DatabaseManager, onComplete: () -> Unit) {
+    val fileChooser = JFileChooser().apply {
+        dialogTitle = "Import from JSON"
+        fileFilter = FileNameExtensionFilter("JSON files", "json")
+    }
+    if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+        val json = File(fileChooser.selectedFile.absolutePath).readText()
+        dbManager.importFromJson(json)
+        onComplete()
+    }
+}
+
+fun exportToIcs(appointment: Appointment) {
+    val calendarExport = CalendarExport()
+    val icsContent = calendarExport.exportToICS(appointment)
+    val filename = calendarExport.getICSFilename(appointment)
+    
+    val fileChooser = JFileChooser().apply {
+        dialogTitle = "Export to ICS"
+        fileFilter = FileNameExtensionFilter("ICS files", "ics")
+        selectedFile = File(filename)
+    }
+    if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+        File(fileChooser.selectedFile.absolutePath).writeText(icsContent)
+    }
+}
+
+@Preview
+@Composable
+fun TerminTrackerAppPreview() {
+    MaterialTheme {
+        Surface {
+            TerminTrackerApp()
+        }
+    }
+}

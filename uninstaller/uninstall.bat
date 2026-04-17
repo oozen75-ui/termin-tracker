@@ -27,6 +27,14 @@ if exist "%START_MENU%" (
     echo ✓ Kısayollar silindi
 )
 
+# SQLite database
+set "DB_FILE=%USERPROFILE%\termin_tracker.db"
+if exist "%DB_FILE%" (
+    echo Veritabanı dosyası siliniyor...
+    del /q "%DB_FILE%"
+    echo ✓ Veritabanı silindi
+)
+
 echo.echo Registry temizleniyor...
 reg delete "HKCU\Software\TerminTracker" /f > nul 2>&1
 echo ✓ Registry temizlendi
